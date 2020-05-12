@@ -93,26 +93,26 @@ int _gnutls_pkcs7_decode_signed_data(gnutls_pkcs7_t pkcs7)
 
 	/* Try reading as octet string according to rfc5652. If that fails, attempt
 	 * a raw read according to rfc2315 */
-	result = _gnutls_x509_read_string(c2, "encapContentInfo.eContent", &pkcs7->der_signed_data, ASN1_ETYPE_OCTET_STRING, 1);
+	result = _gnutls_x509_read_string(c2, "encapContentInfo.eContent", &pkcs7->der_encap_data, ASN1_ETYPE_OCTET_STRING, 1);
 	if (result < 0) {
-		result = _gnutls_x509_read_value(c2, "encapContentInfo.eContent", &pkcs7->der_signed_data);
+		result = _gnutls_x509_read_value(c2, "encapContentInfo.eContent", &pkcs7->der_encap_data);
 		if (result < 0) {
-			pkcs7->der_signed_data.data = NULL;
-			pkcs7->der_signed_data.size = 0;
+			pkcs7->der_encap_data.data = NULL;
+			pkcs7->der_encap_data.size = 0;
 		} else {
 			int tag_len, len_len;
 			unsigned char cls;
 			unsigned long tag;
 
 			/* we skip the embedded element's tag and length - uncharted territorry - used by MICROSOFT_CERT_TRUST_LIST */
-			result = asn1_get_tag_der(pkcs7->der_signed_data.data, pkcs7->der_signed_data.size, &cls, &tag_len, &tag);
+			result = asn1_get_tag_der(pkcs7->der_encap_data.data, pkcs7->der_encap_data.size, &cls, &tag_len, &tag);
 			if (result != ASN1_SUCCESS) {
 				gnutls_assert();
 				result = _gnutls_asn2err(result);
 				goto cleanup;
 			}
 
-			result = asn1_get_length_ber(pkcs7->der_signed_data.data+tag_len, pkcs7->der_signed_data.size-tag_len, &len_len);
+			result = asn1_get_length_ber(pkcs7->der_encap_data.data+tag_len, pkcs7->der_encap_data.size-tag_len, &len_len);
 			if (result < 0) {
 				gnutls_assert();
 				result = GNUTLS_E_ASN1_DER_ERROR;
@@ -120,12 +120,12 @@ int _gnutls_pkcs7_decode_signed_data(gnutls_pkcs7_t pkcs7)
 			}
 
 			tag_len += len_len;
-			memmove(pkcs7->der_signed_data.data, &pkcs7->der_signed_data.data[tag_len], pkcs7->der_signed_data.size-tag_len);
-			pkcs7->der_signed_data.size-=tag_len;
+			memmove(pkcs7->der_encap_data.data, &pkcs7->der_encap_data.data[tag_len], pkcs7->der_encap_data.size-tag_len);
+			pkcs7->der_encap_data.size-=tag_len;
 		}
 	}
 
-	pkcs7->signed_data = c2;
+	pkcs7->content_data = c2;
 	gnutls_free(tmp.data);
 
 	return 0;
@@ -174,7 +174,7 @@ gnutls_pkcs7_get_crt_raw2(gnutls_pkcs7_t pkcs7,
 
 	len = sizeof(oid) - 1;
 
-	result = asn1_read_value(pkcs7->signed_data, root2, oid, &len);
+	result = asn1_read_value(pkcs7->content_data, root2, oid, &len);
 
 	if (result == ASN1_VALUE_NOT_FOUND) {
 		result = GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE;
@@ -199,7 +199,7 @@ gnutls_pkcs7_get_crt_raw2(gnutls_pkcs7_t pkcs7,
 		}
 
 		result =
-		    asn1_der_decoding_startEnd(pkcs7->signed_data, tmp.data,
+		    asn1_der_decoding_startEnd(pkcs7->content_data, tmp.data,
 					       tmp.size, root2, &start, &end);
 
 		if (result != ASN1_SUCCESS) {
@@ -286,7 +286,7 @@ int gnutls_pkcs7_get_crt_count(gnutls_pkcs7_t pkcs7)
 	/* Step 2. Count the CertificateSet */
 
 	result =
-	    asn1_number_of_elements(pkcs7->signed_data, "certificates", &count);
+	    asn1_number_of_elements(pkcs7->content_data, "certificates", &count);
 	if (result != ASN1_SUCCESS) {
 		gnutls_assert();
 		return 0;	/* no certificates */
@@ -330,7 +330,7 @@ static time_t parse_time(gnutls_pkcs7_t pkcs7, const char *root)
 	}
 
 	len = sizeof(tval);
-	result = asn1_read_value(pkcs7->signed_data, root, tval, &len);
+	result = asn1_read_value(pkcs7->content_data, root, tval, &len);
 	if (result != ASN1_SUCCESS) {
 		ret = -1;
 		gnutls_assert();
@@ -371,7 +371,7 @@ int gnutls_pkcs7_get_signature_count(gnutls_pkcs7_t pkcs7)
 		return GNUTLS_E_INVALID_REQUEST;
 
 	ret =
-	    asn1_number_of_elements(pkcs7->signed_data, "signerInfos", &count);
+	    asn1_number_of_elements(pkcs7->content_data, "signerInfos", &count);
 	if (ret != ASN1_SUCCESS) {
 		gnutls_assert();
 		return 0;
@@ -413,7 +413,7 @@ int gnutls_pkcs7_get_signature_info(gnutls_pkcs7_t pkcs7, unsigned idx,
 	info->signing_time = -1;
 
 	ret =
-	    asn1_number_of_elements(pkcs7->signed_data, "signerInfos", &count);
+	    asn1_number_of_elements(pkcs7->content_data, "signerInfos", &count);
 	if (ret != ASN1_SUCCESS || idx + 1 > (unsigned)count) {
 		gnutls_assert();
 		return GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE;
@@ -422,7 +422,7 @@ int gnutls_pkcs7_get_signature_info(gnutls_pkcs7_t pkcs7, unsigned idx,
 		 "signerInfos.?%u.signatureAlgorithm.algorithm", idx + 1);
 
 	len = sizeof(oid) - 1;
-	ret = asn1_read_value(pkcs7->signed_data, root, oid, &len);
+	ret = asn1_read_value(pkcs7->content_data, root, oid, &len);
 	if (ret != ASN1_SUCCESS) {
 		gnutls_assert();
 		goto unsupp_algo;
@@ -442,7 +442,7 @@ int gnutls_pkcs7_get_signature_info(gnutls_pkcs7_t pkcs7, unsigned idx,
 			 "signerInfos.?%u.digestAlgorithm.algorithm", idx + 1);
 
 		len = sizeof(oid) - 1;
-		ret = asn1_read_value(pkcs7->signed_data, root, oid, &len);
+		ret = asn1_read_value(pkcs7->content_data, root, oid, &len);
 		if (ret != ASN1_SUCCESS) {
 			gnutls_assert();
 			goto unsupp_algo;
@@ -465,7 +465,7 @@ int gnutls_pkcs7_get_signature_info(gnutls_pkcs7_t pkcs7, unsigned idx,
 
 	snprintf(root, sizeof(root), "signerInfos.?%u.signature", idx + 1);
 	/* read the signature */
-	ret = _gnutls_x509_read_value(pkcs7->signed_data, root, &info->sig);
+	ret = _gnutls_x509_read_value(pkcs7->content_data, root, &info->sig);
 	if (ret < 0) {
 		gnutls_assert();
 		goto fail;
@@ -477,7 +477,7 @@ int gnutls_pkcs7_get_signature_info(gnutls_pkcs7_t pkcs7, unsigned idx,
 		 idx + 1);
 	/* read the signature */
 	ret =
-	    _gnutls_x509_get_raw_field(pkcs7->signed_data, root,
+	    _gnutls_x509_get_raw_field(pkcs7->content_data, root,
 				       &info->issuer_dn);
 	if (ret >= 0) {
 		snprintf(root, sizeof(root),
@@ -485,7 +485,7 @@ int gnutls_pkcs7_get_signature_info(gnutls_pkcs7_t pkcs7, unsigned idx,
 			 idx + 1);
 		/* read the signature */
 		ret =
-		    _gnutls_x509_read_value(pkcs7->signed_data, root,
+		    _gnutls_x509_read_value(pkcs7->content_data, root,
 					    &info->signer_serial);
 		if (ret < 0) {
 			gnutls_assert();
@@ -496,7 +496,7 @@ int gnutls_pkcs7_get_signature_info(gnutls_pkcs7_t pkcs7, unsigned idx,
 			 "signerInfos.?%u.sid.subjectKeyIdentifier", idx + 1);
 		/* read the signature */
 		ret =
-		    _gnutls_x509_read_value(pkcs7->signed_data, root,
+		    _gnutls_x509_read_value(pkcs7->content_data, root,
 					    &info->issuer_keyid);
 		if (ret < 0) {
 			gnutls_assert();
@@ -514,7 +514,7 @@ int gnutls_pkcs7_get_signature_info(gnutls_pkcs7_t pkcs7, unsigned idx,
 			 "signerInfos.?%u.signedAttrs.?%u.type", idx + 1,
 			 i + 1);
 		len = sizeof(oid) - 1;
-		ret = asn1_read_value(pkcs7->signed_data, root, oid, &len);
+		ret = asn1_read_value(pkcs7->content_data, root, oid, &len);
 		if (ret != ASN1_SUCCESS) {
 			break;
 		}
@@ -522,7 +522,7 @@ int gnutls_pkcs7_get_signature_info(gnutls_pkcs7_t pkcs7, unsigned idx,
 		snprintf(root, sizeof(root),
 			 "signerInfos.?%u.signedAttrs.?%u.values.?1", idx + 1,
 			 i + 1);
-		ret = _gnutls_x509_read_value(pkcs7->signed_data, root, &tmp);
+		ret = _gnutls_x509_read_value(pkcs7->content_data, root, &tmp);
 		if (ret == GNUTLS_E_ASN1_ELEMENT_NOT_FOUND) {
 			tmp.data = NULL;
 			tmp.size = 0;
@@ -550,7 +550,7 @@ int gnutls_pkcs7_get_signature_info(gnutls_pkcs7_t pkcs7, unsigned idx,
 			 "signerInfos.?%u.unsignedAttrs.?%u.type", idx + 1,
 			 i + 1);
 		len = sizeof(oid) - 1;
-		ret = asn1_read_value(pkcs7->signed_data, root, oid, &len);
+		ret = asn1_read_value(pkcs7->content_data, root, oid, &len);
 		if (ret != ASN1_SUCCESS) {
 			break;
 		}
@@ -558,7 +558,7 @@ int gnutls_pkcs7_get_signature_info(gnutls_pkcs7_t pkcs7, unsigned idx,
 		snprintf(root, sizeof(root),
 			 "signerInfos.?%u.unsignedAttrs.?%u.values.?1", idx + 1,
 			 i + 1);
-		ret = _gnutls_x509_read_value(pkcs7->signed_data, root, &tmp);
+		ret = _gnutls_x509_read_value(pkcs7->content_data, root, &tmp);
 		if (ret == GNUTLS_E_ASN1_ELEMENT_NOT_FOUND) {
 			tmp.data = NULL;
 			tmp.size = 0;
@@ -612,7 +612,7 @@ static int verify_hash_attr(gnutls_pkcs7_t pkcs7, const char *root,
 	hash_size = gnutls_hash_get_len(hash);
 
 	if (data == NULL || data->data == NULL) {
-		data = &pkcs7->der_signed_data;
+		data = &pkcs7->der_encap_data;
 	}
 
 	if (data->size == 0) {
@@ -627,7 +627,7 @@ static int verify_hash_attr(gnutls_pkcs7_t pkcs7, const char *root,
 	for (i = 0;; i++) {
 		snprintf(name, sizeof(name), "%s.signedAttrs.?%u", root, i + 1);
 
-		ret = _gnutls_x509_decode_and_read_attribute(pkcs7->signed_data,
+		ret = _gnutls_x509_decode_and_read_attribute(pkcs7->content_data,
 							     name, oid,
 							     sizeof(oid), &tmp,
 							     1, 0);
@@ -664,7 +664,7 @@ static int verify_hash_attr(gnutls_pkcs7_t pkcs7, const char *root,
 
 			/* check if it matches */
 			ret =
-			    _gnutls_x509_get_raw_field(pkcs7->signed_data,
+			    _gnutls_x509_get_raw_field(pkcs7->content_data,
 						       "encapContentInfo.eContentType",
 						       &tmp2);
 			if (ret < 0) {
@@ -708,7 +708,7 @@ static int figure_pkcs7_sigdata(gnutls_pkcs7_t pkcs7, const char *root,
 
 	snprintf(name, sizeof(name), "%s.signedAttrs", root);
 	/* read the signature */
-	ret = _gnutls_x509_get_raw_field(pkcs7->signed_data, name, sigdata);
+	ret = _gnutls_x509_get_raw_field(pkcs7->content_data, name, sigdata);
 	if (ret == 0) {
 		/* verify that hash matches */
 		ret = verify_hash_attr(pkcs7, root, algo, data);
@@ -723,7 +723,7 @@ static int figure_pkcs7_sigdata(gnutls_pkcs7_t pkcs7, const char *root,
 
 	/* We have no signedAttrs. Use the provided data, or the encapsulated */
 	if (data == NULL || data->data == NULL) {
-		return _gnutls_set_datum(sigdata, pkcs7->der_signed_data.data, pkcs7->der_signed_data.size);
+		return _gnutls_set_datum(sigdata, pkcs7->der_encap_data.data, pkcs7->der_encap_data.size);
 	}
 
 	return _gnutls_set_datum(sigdata, data->data, data->size);
@@ -774,7 +774,7 @@ int gnutls_pkcs7_verify_direct(gnutls_pkcs7_t pkcs7,
 		return GNUTLS_E_INVALID_REQUEST;
 
 	ret =
-	    asn1_number_of_elements(pkcs7->signed_data, "signerInfos", &count);
+	    asn1_number_of_elements(pkcs7->content_data, "signerInfos", &count);
 	if (ret != ASN1_SUCCESS || idx + 1 > (unsigned)count) {
 		gnutls_assert();
 		return GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE;
@@ -1194,7 +1194,7 @@ int gnutls_pkcs7_verify(gnutls_pkcs7_t pkcs7,
 		return GNUTLS_E_INVALID_REQUEST;
 
 	ret =
-	    asn1_number_of_elements(pkcs7->signed_data, "signerInfos", &count);
+	    asn1_number_of_elements(pkcs7->content_data, "signerInfos", &count);
 	if (ret != ASN1_SUCCESS || idx + 1 > (unsigned)count) {
 		gnutls_assert();
 		return GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE;
@@ -1321,12 +1321,12 @@ int gnutls_pkcs7_set_crt_raw(gnutls_pkcs7_t pkcs7, const gnutls_datum_t * crt)
 	/* If the signed data are uninitialized
 	 * then create them.
 	 */
-	if (pkcs7->signed_data == ASN1_TYPE_EMPTY) {
+	if (pkcs7->content_data == ASN1_TYPE_EMPTY) {
 		/* The pkcs7 structure is new, so create the
 		 * signedData.
 		 */
 		result =
-		    create_empty_signed_data(pkcs7->pkcs7, &pkcs7->signed_data);
+		    create_empty_signed_data(pkcs7->pkcs7, &pkcs7->content_data);
 		if (result < 0) {
 			gnutls_assert();
 			return result;
@@ -1336,7 +1336,7 @@ int gnutls_pkcs7_set_crt_raw(gnutls_pkcs7_t pkcs7, const gnutls_datum_t * crt)
 	/* Step 2. Append the new certificate.
 	 */
 
-	result = asn1_write_value(pkcs7->signed_data, "certificates", "NEW", 1);
+	result = asn1_write_value(pkcs7->content_data, "certificates", "NEW", 1);
 	if (result != ASN1_SUCCESS) {
 		gnutls_assert();
 		result = _gnutls_asn2err(result);
@@ -1344,7 +1344,7 @@ int gnutls_pkcs7_set_crt_raw(gnutls_pkcs7_t pkcs7, const gnutls_datum_t * crt)
 	}
 
 	result =
-	    asn1_write_value(pkcs7->signed_data, "certificates.?LAST",
+	    asn1_write_value(pkcs7->content_data, "certificates.?LAST",
 			     "certificate", 1);
 	if (result != ASN1_SUCCESS) {
 		gnutls_assert();
@@ -1353,7 +1353,7 @@ int gnutls_pkcs7_set_crt_raw(gnutls_pkcs7_t pkcs7, const gnutls_datum_t * crt)
 	}
 
 	result =
-	    asn1_write_value(pkcs7->signed_data,
+	    asn1_write_value(pkcs7->content_data,
 			     "certificates.?LAST.certificate", crt->data,
 			     crt->size);
 	if (result != ASN1_SUCCESS) {
@@ -1430,7 +1430,7 @@ int gnutls_pkcs7_delete_crt(gnutls_pkcs7_t pkcs7, int indx)
 
 	snprintf(root2, sizeof(root2), "certificates.?%u", indx + 1);
 
-	result = asn1_write_value(pkcs7->signed_data, root2, NULL, 0);
+	result = asn1_write_value(pkcs7->content_data, root2, NULL, 0);
 	if (result != ASN1_SUCCESS) {
 		gnutls_assert();
 		result = _gnutls_asn2err(result);
@@ -1486,7 +1486,7 @@ gnutls_pkcs7_get_crl_raw2(gnutls_pkcs7_t pkcs7,
 	/* Get the raw CRL
 	 */
 	result =
-	    asn1_der_decoding_startEnd(pkcs7->signed_data, tmp.data, tmp.size,
+	    asn1_der_decoding_startEnd(pkcs7->content_data, tmp.data, tmp.size,
 				       root2, &start, &end);
 
 	if (result != ASN1_SUCCESS) {
@@ -1566,7 +1566,7 @@ int gnutls_pkcs7_get_crl_count(gnutls_pkcs7_t pkcs7)
 
 	/* Step 2. Count the CertificateSet */
 
-	result = asn1_number_of_elements(pkcs7->signed_data, "crls", &count);
+	result = asn1_number_of_elements(pkcs7->content_data, "crls", &count);
 	if (result != ASN1_SUCCESS) {
 		gnutls_assert();
 		return 0;	/* no crls */
@@ -1596,12 +1596,12 @@ int gnutls_pkcs7_set_crl_raw(gnutls_pkcs7_t pkcs7, const gnutls_datum_t * crl)
 	/* If the signed data are uninitialized
 	 * then create them.
 	 */
-	if (pkcs7->signed_data == ASN1_TYPE_EMPTY) {
+	if (pkcs7->content_data == ASN1_TYPE_EMPTY) {
 		/* The pkcs7 structure is new, so create the
 		 * signedData.
 		 */
 		result =
-		    create_empty_signed_data(pkcs7->pkcs7, &pkcs7->signed_data);
+		    create_empty_signed_data(pkcs7->pkcs7, &pkcs7->content_data);
 		if (result < 0) {
 			gnutls_assert();
 			return result;
@@ -1611,7 +1611,7 @@ int gnutls_pkcs7_set_crl_raw(gnutls_pkcs7_t pkcs7, const gnutls_datum_t * crl)
 	/* Step 2. Append the new crl.
 	 */
 
-	result = asn1_write_value(pkcs7->signed_data, "crls", "NEW", 1);
+	result = asn1_write_value(pkcs7->content_data, "crls", "NEW", 1);
 	if (result != ASN1_SUCCESS) {
 		gnutls_assert();
 		result = _gnutls_asn2err(result);
@@ -1619,7 +1619,7 @@ int gnutls_pkcs7_set_crl_raw(gnutls_pkcs7_t pkcs7, const gnutls_datum_t * crl)
 	}
 
 	result =
-	    asn1_write_value(pkcs7->signed_data, "crls.?LAST", crl->data,
+	    asn1_write_value(pkcs7->content_data, "crls.?LAST", crl->data,
 			     crl->size);
 	if (result != ASN1_SUCCESS) {
 		gnutls_assert();
@@ -1694,7 +1694,7 @@ int gnutls_pkcs7_delete_crl(gnutls_pkcs7_t pkcs7, int indx)
 
 	snprintf(root2, sizeof(root2), "crls.?%u", indx + 1);
 
-	result = asn1_write_value(pkcs7->signed_data, root2, NULL, 0);
+	result = asn1_write_value(pkcs7->content_data, root2, NULL, 0);
 	if (result != ASN1_SUCCESS) {
 		gnutls_assert();
 		result = _gnutls_asn2err(result);
@@ -2007,11 +2007,11 @@ int gnutls_pkcs7_sign(gnutls_pkcs7_t pkcs7,
 	if (pkcs7 == NULL || me == NULL)
 		return GNUTLS_E_INVALID_REQUEST;
 
-	if (pkcs7->signed_data == ASN1_TYPE_EMPTY) {
+	if (pkcs7->content_data == ASN1_TYPE_EMPTY) {
 		result =
 		    asn1_create_element(_gnutls_get_pkix(),
 					"PKIX1.pkcs-7-SignedData",
-					&pkcs7->signed_data);
+					&pkcs7->content_data);
 		if (result != ASN1_SUCCESS) {
 			gnutls_assert();
 			ret = _gnutls_asn2err(result);
@@ -2019,19 +2019,19 @@ int gnutls_pkcs7_sign(gnutls_pkcs7_t pkcs7,
 		}
 
 		if (!(flags & GNUTLS_PKCS7_EMBED_DATA)) {
-			(void)asn1_write_value(pkcs7->signed_data,
+			(void)asn1_write_value(pkcs7->content_data,
 					 "encapContentInfo.eContent", NULL, 0);
 		}
 	}
 
-	result = asn1_write_value(pkcs7->signed_data, "version", &one, 1);
+	result = asn1_write_value(pkcs7->content_data, "version", &one, 1);
 	if (result != ASN1_SUCCESS) {
 		ret = _gnutls_asn2err(result);
 		goto cleanup;
 	}
 
 	result =
-	    asn1_write_value(pkcs7->signed_data,
+	    asn1_write_value(pkcs7->content_data,
 			     "encapContentInfo.eContentType", DATA_OID,
 			     0);
 	if (result != ASN1_SUCCESS) {
@@ -2041,7 +2041,7 @@ int gnutls_pkcs7_sign(gnutls_pkcs7_t pkcs7,
 
 	if ((flags & GNUTLS_PKCS7_EMBED_DATA) && data->data) {	/* embed data */
 		ret =
-		    _gnutls_x509_write_string(pkcs7->signed_data,
+		    _gnutls_x509_write_string(pkcs7->content_data,
 				     "encapContentInfo.eContent", data,
 				     ASN1_ETYPE_OCTET_STRING);
 		if (ret < 0) {
@@ -2059,7 +2059,7 @@ int gnutls_pkcs7_sign(gnutls_pkcs7_t pkcs7,
 
 	/* append digest info algorithm */
 	result =
-	    asn1_write_value(pkcs7->signed_data, "digestAlgorithms", "NEW", 1);
+	    asn1_write_value(pkcs7->content_data, "digestAlgorithms", "NEW", 1);
 	if (result != ASN1_SUCCESS) {
 		gnutls_assert();
 		ret = _gnutls_asn2err(result);
@@ -2067,7 +2067,7 @@ int gnutls_pkcs7_sign(gnutls_pkcs7_t pkcs7,
 	}
 
 	result =
-	    asn1_write_value(pkcs7->signed_data,
+	    asn1_write_value(pkcs7->content_data,
 			     "digestAlgorithms.?LAST.algorithm",
 			     _gnutls_x509_digest_to_oid(me), 1);
 	if (result != ASN1_SUCCESS) {
@@ -2076,11 +2076,11 @@ int gnutls_pkcs7_sign(gnutls_pkcs7_t pkcs7,
 		goto cleanup;
 	}
 
-	(void)asn1_write_value(pkcs7->signed_data,
+	(void)asn1_write_value(pkcs7->content_data,
 			 "digestAlgorithms.?LAST.parameters", NULL, 0);
 
 	/* append signer's info */
-	result = asn1_write_value(pkcs7->signed_data, "signerInfos", "NEW", 1);
+	result = asn1_write_value(pkcs7->content_data, "signerInfos", "NEW", 1);
 	if (result != ASN1_SUCCESS) {
 		gnutls_assert();
 		ret = _gnutls_asn2err(result);
@@ -2088,7 +2088,7 @@ int gnutls_pkcs7_sign(gnutls_pkcs7_t pkcs7,
 	}
 
 	result =
-	    asn1_write_value(pkcs7->signed_data, "signerInfos.?LAST.version",
+	    asn1_write_value(pkcs7->content_data, "signerInfos.?LAST.version",
 			     &one, 1);
 	if (result != ASN1_SUCCESS) {
 		gnutls_assert();
@@ -2097,7 +2097,7 @@ int gnutls_pkcs7_sign(gnutls_pkcs7_t pkcs7,
 	}
 
 	result =
-	    asn1_write_value(pkcs7->signed_data,
+	    asn1_write_value(pkcs7->content_data,
 			     "signerInfos.?LAST.digestAlgorithm.algorithm",
 			     _gnutls_x509_digest_to_oid(me), 1);
 	if (result != ASN1_SUCCESS) {
@@ -2106,12 +2106,12 @@ int gnutls_pkcs7_sign(gnutls_pkcs7_t pkcs7,
 		goto cleanup;
 	}
 
-	(void)asn1_write_value(pkcs7->signed_data,
+	(void)asn1_write_value(pkcs7->content_data,
 			 "signerInfos.?LAST.digestAlgorithm.parameters", NULL,
 			 0);
 
 	ret =
-	    write_signer_id(pkcs7->signed_data, "signerInfos.?LAST", signer,
+	    write_signer_id(pkcs7->content_data, "signerInfos.?LAST", signer,
 			    flags);
 	if (ret < 0) {
 		gnutls_assert();
@@ -2119,7 +2119,7 @@ int gnutls_pkcs7_sign(gnutls_pkcs7_t pkcs7,
 	}
 
 	ret =
-	    add_attrs(pkcs7->signed_data, "signerInfos.?LAST.unsignedAttrs",
+	    add_attrs(pkcs7->content_data, "signerInfos.?LAST.unsignedAttrs",
 		      unsigned_attrs, 0);
 	if (ret < 0) {
 		gnutls_assert();
@@ -2127,7 +2127,7 @@ int gnutls_pkcs7_sign(gnutls_pkcs7_t pkcs7,
 	}
 
 	ret =
-	    write_attributes(pkcs7->signed_data,
+	    write_attributes(pkcs7->content_data,
 			     "signerInfos.?LAST.signedAttrs", data, me,
 			     signed_attrs, flags);
 	if (ret < 0) {
@@ -2170,7 +2170,7 @@ int gnutls_pkcs7_sign(gnutls_pkcs7_t pkcs7,
 	 */
 	params.legacy = 1;
 	ret =
-	    _gnutls_x509_write_sign_params(pkcs7->signed_data,
+	    _gnutls_x509_write_sign_params(pkcs7->content_data,
 					   "signerInfos.?LAST.signatureAlgorithm",
 					   se, &params);
 	if (ret < 0) {
@@ -2199,7 +2199,7 @@ int gnutls_pkcs7_sign(gnutls_pkcs7_t pkcs7,
 	}
 
 	result =
-	    asn1_write_value(pkcs7->signed_data, "signerInfos.?LAST.signature",
+	    asn1_write_value(pkcs7->content_data, "signerInfos.?LAST.signature",
 			     signature.data, signature.size);
 	if (result != ASN1_SUCCESS) {
 		gnutls_assert();
