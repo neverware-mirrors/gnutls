@@ -115,6 +115,12 @@ typedef struct gnutls_x509_crq_int {
 	ASN1_TYPE crq;
 } gnutls_x509_crq_int;
 
+typedef enum {
+	GNUTLS_PKCS7_UNINITIALIZED = 0,
+	GNUTLS_PKCS7_DATA = 1,
+	GNUTLS_PKCS7_SIGNED = 2,
+} gnutls_pkcs7_content_type_t;
+
 typedef struct gnutls_pkcs7_attrs_st {
 	char *oid;
 	gnutls_datum_t data;
@@ -124,6 +130,7 @@ typedef struct gnutls_pkcs7_attrs_st {
 typedef struct gnutls_pkcs7_int {
 	ASN1_TYPE pkcs7;
 
+	gnutls_pkcs7_content_type_t type;
 	ASN1_TYPE content_data;
 
 	char encap_data_oid[MAX_OID_SIZE];
