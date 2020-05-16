@@ -1328,7 +1328,10 @@ GNUTLS_3_6_14
 {
  global:
 	gnutls_ext_get_name2;
+	gnutls_pkcs7_digest;
+	gnutls_pkcs7_get_digest_algo;
 	gnutls_pkcs7_print_signature_info;
+	gnutls_pkcs7_verify_digest;
 } GNUTLS_3_6_13;
 
 GNUTLS_3_7_0

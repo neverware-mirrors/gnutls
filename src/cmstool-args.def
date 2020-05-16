@@ -85,6 +85,17 @@ flag = {
     doc       = "";
 };
 
+flag = {
+    name      = digest;
+    descrip   = "Digest using a PKCS #7 structure";
+    doc       = "This option generates a PKCS #7 structure containing a digest for the provided data from infile. The data are stored within the structure.";
+};
+
+flag = {
+    name      = verify-digest;
+    descrip   = "Verify the provided PKCS #7 digested structure";
+    doc       = "This option verifies the digested PKCS #7 structure. The --load-data option will utilize detached data.";
+};
 
 
 //----------------------------------------
