@@ -28,6 +28,7 @@ ARGS_BUILT = \
 	cli-args.c cli-args.h \
 	cli-debug-args.c cli-debug-args.h \
 	certtool-args.c certtool-args.h \
+	cmstool-args.c cmstool-args.h \
 	danetool-args.c danetool-args.h \
 	p11tool-args.c p11tool-args.h \
 	tpmtool-args.c tpmtool-args.h \
@@ -46,6 +47,7 @@ ARGS_BAK = \
 	cli-args.c.bak cli-args.h.bak \
 	cli-debug-args.c.bak cli-debug-args.h.bak \
 	certtool-args.c.bak certtool-args.h.bak \
+	cmstool-args.c.bak cmstool-args.h.bak \
 	danetool-args.c.bak danetool-args.h.bak \
 	p11tool-args.c.bak p11tool-args.h.bak \
 	tpmtool-args.c.bak tpmtool-args.h.bak \
@@ -54,7 +56,7 @@ ARGS_BAK = \
 ARGS_STAMPS = \
 	certtool-args.stamp cli-debug-args.stamp cli-args.stamp tpmtool-args.stamp \
 	systemkey-args.stamp srptool-args.stamp ocsptool-args.stamp p11tool-args.stamp \
-	danetool-args.stamp serv-args.stamp psktool-args.stamp
+	danetool-args.stamp serv-args.stamp psktool-args.stamp cmstool-args.stamp
 
 BUILT_SOURCES = $(ARGS_BUILT)
 
@@ -82,7 +84,7 @@ else
 LIBOPTS = $(LIBOPTS_LDADD)
 endif
 
-bin_PROGRAMS = psktool gnutls-cli-debug certtool gnutls-serv gnutls-cli
+bin_PROGRAMS = psktool gnutls-cli-debug certtool cmstool gnutls-serv gnutls-cli
 if ENABLE_SRP
 bin_PROGRAMS += srptool
 endif
@@ -192,6 +194,7 @@ endif
 
 
 certtool_SOURCES = certtool.c certtool-common.c certtool-extras.c common.c
+certtool_SOURCES += cmstool-common.h cmstool-common.c
 certtool_LDADD = ../lib/libgnutls.la 
 certtool_LDADD += libcmd-certtool.la ../gl/libgnu.la gl/libgnu_gpl.la
 
@@ -204,6 +207,13 @@ libcmd_certtool_la_LIBADD += $(COMMON_LIBS)
 libcmd_certtool_la_LIBADD += $(LTLIBREADLINE) gl/libgnu_gpl.la
 libcmd_certtool_la_LIBADD += $(INET_PTON_LIB) $(LIB_CLOCK_GETTIME)
 
+cmstool_SOURCES = cmstool.c cmstool-common.h cmstool-common.c certtool-common.c \
+	common.c common.h
+cmstool_LDADD = ../lib/libgnutls.la libcmd-cmstool.la $(LIBOPTS) ../gl/libgnu.la
+cmstool_LDADD += $(LTLIBINTL) $(GETADDRINFO_LIB) gl/libgnu_gpl.la $(LIBIDN_LIBS)
+noinst_LTLIBRARIES += libcmd-cmstool.la
+libcmd_cmstool_la_SOURCES = cmstool-args.def
+nodist_libcmd_cmstool_la_SOURCES = cmstool-args.h cmstool-args.c
 
 danetool_SOURCES = danetool.c certtool-common.c certtool-extras.c common.c socket.c
 danetool_LDADD = ../lib/libgnutls.la  $(LIBIDN_LIBS)
@@ -345,6 +355,10 @@ srptool-args.stamp: args-std.def
 certtool-args.h: certtool-args.stamp
 certtool-args.c: certtool-args.stamp
 certtool-args.stamp: args-std.def
+
+cmstool-args.h: cmstool-args.stamp
+cmstool-args.c: cmstool-args.stamp
+cmstool-args.stamp: args-std.def
 
 systemkey-args.h: systemkey-args.stamp
 systemkey-args.c: systemkey-args.stamp

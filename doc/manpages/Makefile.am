@@ -26,7 +26,7 @@ MAINTAINERCLEANFILES = stamp_mans
 -include $(top_srcdir)/doc/doc.mk
 
 TOOLS_MANS = gnutls-cli.1 gnutls-cli-debug.1 gnutls-serv.1	\
-	certtool.1 psktool.1 p11tool.1 ocsptool.1 tpmtool.1
+	certtool.1 cmstool.1 psktool.1 p11tool.1 ocsptool.1 tpmtool.1
 SRP_MANS = srptool.1
 DANE_MANS = danetool.1
 
@@ -50,6 +50,11 @@ MAINTAINERCLEANFILES += $(TOOLS_MANS) $(SRP_MANS) $(DANE_MANS)
 # is out, replace the sed and tmp files with a simple
 # autogen -L ../../src -DMAN_SECTION=1 -Tagman-cmd.tpl $<
 certtool.1: ../../src/certtool-args.def
+	-sed 's/@subheading \(.*\)/@*\n@var{\1}\n@*/' $< > "$<".tmp && \
+	autogen -L ../../src -DMAN_SECTION=1 -Tagman-cmd.tpl "$<".tmp && \
+	rm -f "$<".tmp
+
+cmstool.1: ../../src/cmstool-args.def
 	-sed 's/@subheading \(.*\)/@*\n@var{\1}\n@*/' $< > "$<".tmp && \
 	autogen -L ../../src -DMAN_SECTION=1 -Tagman-cmd.tpl "$<".tmp && \
 	rm -f "$<".tmp

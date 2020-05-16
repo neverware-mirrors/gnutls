@@ -1,0 +1,262 @@
+AutoGen Definitions options;
+prog-name     = cmstool;
+prog-title    = "GnuTLS CMS tool";
+prog-desc     = "Manipulate Cryptographic Message Syntax files.";
+detail    = "Tool to parse and generate CMS and PKCS#7 files.
+
+The tool accepts files or supported URIs via the --infile option. In case PIN
+is required for URI access you can provide it using the environment variables GNUTLS_PIN 
+and GNUTLS_SO_PIN.
+";
+short-usage   = "cmstool [options]\ncmstool --help for usage instructions.\n";
+explain       = "";
+
+#define  INFILE_OPT    1
+#define  OUTFILE_OPT   1
+#define  VERBOSE_OPT 1
+#include args-std.def
+
+//----------------------------------------
+flag = {
+    name = pkcs7_options;
+    documentation;
+    descrip = "PKCS#7 structure options";
+};
+//----------------------------------------
+
+flag = {
+    name      = generate;
+    descrip   = "Generate a PKCS #7 structure";
+    doc       = "This option generates a PKCS #7 certificate container structure. To add certificates in the structure use --load-certificate and --load-crl.";
+};
+
+flag = {
+    name      = sign;
+    descrip   = "Signs using a PKCS #7 structure";
+    doc       = "This option generates a PKCS #7 structure containing a signature for the provided data from infile. The data are stored within the structure. The signer certificate has to be specified using --load-certificate and --load-privkey. The input to --load-certificate can be a list of certificates. In case of a list, the first certificate is used for signing and the other certificates are included in the structure.";
+};
+
+
+flag = {
+    name      = detached-sign;
+    descrip   = "Signs using a detached PKCS #7 structure";
+    doc       = "This option generates a PKCS #7 structure containing a signature for the provided data from infile. The signer certificate has to be specified using --load-certificate and --load-privkey. The input to --load-certificate can be a list of certificates. In case of a list, the first certificate is used for signing and the other certificates are included in the structure.";
+};
+
+flag = {
+    name      = include-cert;
+    disable   = "no";
+    enabled;
+    descrip   = "The signer's certificate will be included in the cert list.";
+    doc       = "This options works with --p7-sign or --p7-detached-sign and will include or exclude the signer's certificate into the generated signature.";
+};
+
+flag = {
+    name      = time;
+    disable   = "no";
+    disabled;
+    descrip   = "Will include a timestamp in the PKCS #7 structure";
+    doc       = "This option will include a timestamp in the generated signature";
+};
+
+flag = {
+    name      = show-data;
+    disable   = "no";
+    disabled;
+    descrip   = "Will show the embedded data in the PKCS #7 structure";
+    doc       = "This option can be combined with --p7-verify or --p7-info and will display the embedded signed data in the PKCS #7 structure.";
+};
+
+flag = {
+    name      = info;
+    descrip   = "Print information on a PKCS #7 structure";
+    doc       = "";
+};
+
+flag = {
+    name      = verify;
+    descrip   = "Verify the provided PKCS #7 structure";
+    doc       = "This option verifies the signed PKCS #7 structure. The certificate list to use for verification can be specified with --load-ca-certificate. When no certificate list is provided, then the system's certificate list is used. Alternatively a direct signer can be provided using --load-certificate. A key purpose can be enforced with the --verify-purpose option, and the --load-data option will utilize detached data.";
+};
+
+flag = {
+    name      = smime-to-cms;
+    descrip   = "Convert S/MIME to PKCS #7 structure";
+    doc       = "";
+};
+
+
+
+//----------------------------------------
+flag = {
+    name = other_options;
+    documentation;
+    descrip = "Other options";
+};
+//----------------------------------------
+
+flag = {
+    name      = load-privkey;
+    descrip   = "Loads a private key file";
+    arg-type  = string;
+    doc = "This can be either a file or a PKCS #11 URL";
+};
+
+flag = {
+    name      = load-pubkey;
+    descrip   = "Loads a public key file";
+    arg-type  = string;
+    doc = "This can be either a file or a PKCS #11 URL";
+};
+
+flag = {
+    name      = load-certificate;
+    descrip   = "Loads a certificate file";
+    arg-type  = string;
+    doc = "This option can be used with a file";
+};
+
+flag = {
+    name      = load-ca-certificate;
+    descrip   = "Loads the certificate authority's certificate file";
+    arg-type  = string;
+    doc = "This can be either a file or a PKCS #11 URL";
+};
+
+flag = {
+    name      = load-crl;
+    descrip   = "Loads the provided CRL";
+    arg-type  = string;
+    doc = "This option can be used with a file";
+};
+
+flag = {
+    name      = load-data;
+    descrip   = "Loads auxiliary data";
+    arg-type  = string;
+    doc = "This option can be used with a file";
+};
+
+flag = {
+    name      = password;
+    arg-type  = string;
+    descrip   = "Password to use";
+    doc   = "You can use this option to specify the password in the command line instead of reading it from the tty. Note, that the command line arguments are available for view in others in the system. Specifying password as '' is the same as specifying no password.";
+};
+
+flag = {
+    name      = null-password;
+    descrip   = "Enforce a NULL password";
+    doc   = "This option enforces a NULL password. This is different than the empty or no password in schemas like PKCS #8.";
+};
+
+flag = {
+    name      = empty-password;
+    descrip   = "Enforce an empty password";
+    doc   = "This option enforces an empty password. This is different than the NULL or no password in schemas like PKCS #8.";
+};
+
+flag = {
+    name      = cprint;
+    descrip   = "In certain operations it prints the information in C-friendly format";
+    doc   = "In certain operations it prints the information in C-friendly format, suitable for including into C programs.";
+};
+
+flag = {
+    name      = hash;
+    arg-type  = string;
+    descrip   = "Hash algorithm to use for signing";
+    doc = "Available hash functions are SHA1, RMD160, SHA256, SHA384, SHA512, SHA3-224, SHA3-256, SHA3-384, SHA3-512.";
+};
+
+flag = {
+    name      = salt-size;
+    arg-type  = number;
+    descrip   = "Specify the RSA-PSS key default salt size";
+    doc = "Typical keys shouldn't set or restrict this option.";
+};
+
+flag = {
+    name      = inder;
+    descrip   = "Use DER format for input certificates, private keys, and DH parameters ";
+    disabled;
+    disable   = "no";
+    doc       = "The input files will be assumed to be in DER or RAW format. 
+Unlike options that in PEM input would allow multiple input data (e.g. multiple 
+certificates), when reading in DER format a single data structure is read.";
+};
+
+flag = {
+    name      = inraw;
+    aliases   = inder;
+};
+
+flag = {
+    name      = outder;
+    descrip   = "Use DER format for output certificates, private keys, and DH parameters";
+    disabled;
+    disable   = "no";
+    doc       = "The output will be in DER or RAW format.";
+};
+
+flag = {
+    name      = outraw;
+    aliases   = outder;
+};
+
+flag = {
+    name      = stdout-info;
+    descrip   = "Print information to stdout instead of stderr";
+    doc = "";
+};
+
+/* flag = {
+    name      = ask-pass;
+    disabled;
+    descrip   = "Enable interaction for entering password when in batch mode.";
+    doc   = "This option will enable interaction to enter password when in batch mode. That is useful when the template option has been specified.";
+}; */
+
+flag = {
+    name      = pkcs-cipher;
+    arg-type  = string;
+    arg-name  = "Cipher";
+    descrip   = "Cipher to use for PKCS #8 and #12 operations";
+    doc   = "Cipher may be one of 3des, 3des-pkcs12, aes-128, aes-192, aes-256, rc2-40, arcfour.";
+};
+
+flag = {
+    name      = provider;
+    arg-type  = string;
+    descrip   = "Specify the PKCS #11 provider library";
+    doc      = "This will override the default options in /etc/gnutls/pkcs11.conf";
+};
+
+flag = {
+    name      = verify-purpose;
+    descrip   = "Specify a purpose OID to be used for certificate chain verification";
+    arg-type  = string;
+    doc = "This object identifier restricts the purpose of the certificates to be verified. Example purposes are 1.3.6.1.5.5.7.3.1 (TLS WWW), 1.3.6.1.5.5.7.3.4 (EMAIL) etc. Note that a CA certificate without a purpose set (extended key usage) is valid for any purpose.";
+};
+
+flag = {
+    name      = verify-allow-broken;
+    descrip   = "Allow broken algorithms, such as MD5 for verification";
+    doc = "This can be combined with --verify.";
+};
+
+flag = {
+    name      = text;
+    descrip   = "Output textual information before PEM-encoded certificates, private keys, etc";
+    enabled;
+    disable   = "no";
+    doc       = "Output textual information before PEM-encoded data";
+};
+
+doc-section = {
+  ds-type = 'SEE ALSO';
+  ds-format = 'texi';
+  ds-text   = <<-_EOT_
+    certtool (1)
+_EOT_;
+};
