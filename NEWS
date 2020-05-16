@@ -7,9 +7,14 @@ See the end for copying conditions.
 
 * Version 3.6.14 (unreleased)
 
+** libgnutls: when listing PKCS #11 modules, the library no longer checks
+   the duplicate modules unless the PKCS #11 subsystem is explicitly
+   initialized with GNUTLS_PKCS11_FLAG_IGNORE_DUPLICATE.
+
 ** API and ABI modifications:
 GNUTLS_CIPHER_AES_128_SIV: Added
 GNUTLS_CIPHER_AES_256_SIV: Added
+GNUTLS_PKCS11_FLAG_IGNORE_DUPLICATE: Added
 gnutls_pkcs7_print_signature_info: Added
 
 * Version 3.6.13 (released 2020-03-31)
