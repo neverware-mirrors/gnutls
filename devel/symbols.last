@@ -548,10 +548,12 @@ gnutls_pkcs12_simple_parse@GNUTLS_3_4
 gnutls_pkcs12_verify_mac@GNUTLS_3_4
 gnutls_pkcs7_add_attr@GNUTLS_3_4
 gnutls_pkcs7_attrs_deinit@GNUTLS_3_4
+gnutls_pkcs7_decrypt@GNUTLS_3_6_14
 gnutls_pkcs7_deinit@GNUTLS_3_4
 gnutls_pkcs7_delete_crl@GNUTLS_3_4
 gnutls_pkcs7_delete_crt@GNUTLS_3_4
 gnutls_pkcs7_digest@GNUTLS_3_6_14
+gnutls_pkcs7_encrypt@GNUTLS_3_6_14
 gnutls_pkcs7_export2@GNUTLS_3_4
 gnutls_pkcs7_export@GNUTLS_3_4
 gnutls_pkcs7_get_attr@GNUTLS_3_4

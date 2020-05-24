@@ -97,6 +97,17 @@ flag = {
     doc       = "This option verifies the digested PKCS #7 structure. The --load-data option will utilize detached data.";
 };
 
+flag = {
+    name      = encrypt;
+    descrip   = "Encrypt using a PKCS #7 structure";
+    doc       = "This option generates a PKCS #7 structure containing an encrypted data from infile. The data are stored within the structure.";
+};
+
+flag = {
+    name      = decrypt;
+    descrip   = "Decrypt the provided PKCS #7 EncryptedData structure";
+    doc       = "This option decrypts the Encrypted PKCS #7 structure.";
+};
 
 //----------------------------------------
 flag = {
@@ -165,6 +176,13 @@ flag = {
     name      = empty-password;
     descrip   = "Enforce an empty password";
     doc   = "This option enforces an empty password. This is different than the NULL or no password in schemas like PKCS #8.";
+};
+
+flag = {
+    name      = secretkey;
+    arg-type  = string;
+    descrip   = "Secret key to use";
+    doc   = "You can use this option to specify the secret key in the command line. Note, that the command line arguments are available for view in others in the system.";
 };
 
 flag = {
