@@ -129,7 +129,7 @@ const struct oid_to_string *_gnutls_oid_get_entry(const struct oid_to_string *ot
 int _gnutls_x509_set_time(ASN1_TYPE c2, const char *where, time_t tim,
 			  int force_general);
 int
-_gnutls_x509_set_raw_time(ASN1_TYPE c2, const char *where, time_t tim);
+_gnutls_x509_get_raw_time(time_t tim, gnutls_datum_t *out);
 
 int _gnutls_x509_decode_string(unsigned int etype,
 			       const uint8_t * der, size_t der_size,
