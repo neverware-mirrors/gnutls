@@ -609,4 +609,7 @@ GeneralSubtree ::= SEQUENCE {
 -- rfc7633
 TlsFeatures ::= SEQUENCE OF INTEGER
 
+-- rfc6962
+SignedCertificateTimestamps ::= OCTET STRING
+
 END
