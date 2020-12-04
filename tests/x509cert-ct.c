@@ -33,6 +33,7 @@
 #include <unistd.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
+#include <gnutls/x509-ext.h>
 
 #include "utils.h"
 
@@ -78,10 +79,119 @@ static char pem[] =
 "ESMyYNL3A9igh1jySzg=\n"
 "-----END CERTIFICATE-----\n";
 
-static int check_scts(const gnutls_datum_t *ext)
+static void check_scts(const gnutls_datum_t *ext)
 {
-	/* TODO implement */
-	return 1;
+	int ret;
+	unsigned int i, version;
+	time_t timestamp;
+	gnutls_datum_t logid, sig;
+	gnutls_sign_algorithm_t sigalg;
+	gnutls_x509_ct_scts_t scts;
+#define EXPECTED_LOGID_SIZE 32
+#define NUM_EXPECTED_SCTS 4
+	struct sct_data {
+		unsigned char logid[EXPECTED_LOGID_SIZE];
+		/* time_t timestamp; */
+		gnutls_sign_algorithm_t sigalg;
+		gnutls_datum_t sig;
+	} expected_data[NUM_EXPECTED_SCTS] = {
+		{
+			.logid =
+				"\xdd\xeb\x1d\x2b\x7a\x0d\x4f\xa6\x20\x8b\x81\xad\x81\x68\x70\x7e"
+				"\x2e\x8e\x9d\x01\xd5\x5c\x88\x8d\x3d\x11\xc4\xcd\xb6\xec\xbe\xcc",
+			.sigalg = GNUTLS_SIGN_ECDSA_SHA256,
+			.sig = {
+				.size = 70,
+				.data = (unsigned char *)
+					"\x30\x44\x02\x20\x4b\x95\x1e\xad\x31\xc9\x77\xcd\xf1\x73\xf4\x2f"
+					"\x2f\x1e\x4c\x42\x41\xdd\x73\x00\x2a\x16\x9e\xad\xc9\xf4\x12\xa8"
+					"\xed\x80\xd5\x0f\x02\x20\x4d\xfb\xfa\x54\x27\xd1\x30\x17\x8c\xa1"
+					"\xda\x14\x54\xd5\x4d\xca\x91\xdc\xd3\x23\xe2\x83\x7a\xb2\xd9\x0a"
+					"\x5d\x34\xe0\x00\xc5\x72"
+			}
+		},
+		{
+			.logid =
+				"\xa4\xb9\x09\x90\xb4\x18\x58\x14\x87\xbb\x13\xa2\xcc\x67\x70\x0a"
+				"\x3c\x35\x98\x04\xf9\x1b\xdf\xb8\xe3\x77\xcd\x0e\xc8\x0d\xdc\x10",
+			.sigalg = GNUTLS_SIGN_ECDSA_SHA256,
+			.sig = {
+				.size = 72,
+				.data = (unsigned char *)
+					"\x30\x46\x02\x21\x00\xfa\x0c\x53\xf8\xb3\xd0\xd7\xb8\xbe\x03\x38"
+					"\x71\x0a\x25\xef\x32\xd5\x4b\xcc\x44\x73\x5f\x27\x6a\xd7\x3d\x12"
+					"\x02\xe9\x3a\xab\xef\x02\x21\x00\xb7\x2b\x7a\x9c\xc8\x3b\xd7\xcf"
+					"\xda\xc5\xe7\x20\xd5\xf9\x36\x75\xc0\xca\x08\xff\x04\xa4\x42\x56"
+					"\x9d\xa6\xe7\x0d\x1c\x0c\x6f\x4d"
+			}
+		},
+		{
+			.logid =
+				"\xee\x4b\xbd\xb7\x75\xce\x60\xba\xe1\x42\x69\x1f\xab\xe1\x9e\x66"
+				"\xa3\x0f\x7e\x5f\xb0\x72\xd8\x83\x00\xc4\x7b\x89\x7a\xa8\xfd\xcb",
+			.sigalg = GNUTLS_SIGN_ECDSA_SHA256,
+			.sig = {
+				.size = 71,
+				.data = (unsigned char *)
+					"\x30\x45\x02\x20\x7f\x29\x64\xde\x5d\x89\xed\xa5\x3a\xde\xa2\xd8"
+					"\xd4\xb9\xef\x1c\x5d\xba\x8d\x76\x98\x66\x78\x5e\xde\x9c\x3c\x04"
+					"\x55\x64\x28\xa9\x02\x21\x00\xc4\xe1\x97\x2b\xad\xe0\x0a\x69\x74"
+					"\x8d\x99\xe5\x04\x03\x7f\xe3\x56\x0c\x08\xd1\x74\x70\x29\x7d\xac"
+					"\xc2\x11\x98\x43\x9e\x7d\xf6"
+			}
+		},
+		{
+			.logid =
+				"\xbc\x78\xe1\xdf\xc5\xf6\x3c\x68\x46\x49\x33\x4d\xa1\x0f\xa1\x5f"
+				"\x09\x79\x69\x20\x09\xc0\x81\xb4\xf3\xf6\x91\x7f\x3e\xd9\xb8\xa5",
+			.sigalg = GNUTLS_SIGN_ECDSA_SHA256,
+			.sig = {
+				.size = 71,
+				.data = (unsigned char *)
+					"\x30\x45\x02\x20\x3b\x47\x9f\xea\xbd\xde\x7f\xe6\x18\x6c\xdd\x15"
+					"\x96\xfd\x3c\x89\x9e\xbc\x4d\xed\xf3\x28\xb8\x16\x91\x0a\x42\x1d"
+					"\xdf\x37\xe1\xdd\x02\x21\x00\xeb\x5f\x2d\x37\xf9\x51\xf6\x6f\x1d"
+					"\x87\x40\x55\x7c\x70\x09\xf6\x8d\xc2\x01\x3e\x77\xb1\x68\xce\xdf"
+					"\xbb\x05\x84\x73\xcd\x39\x3e"
+			}
+		}
+	};
+
+	ret  = gnutls_x509_ext_ct_scts_init(&scts);
+	if (ret < 0)
+		fail("gnutls_x509_ext_ct_scts_init");
+
+	ret = gnutls_x509_ext_ct_import_scts(ext, scts);
+	if (ret < 0)
+		fail("gnutls_x509_ext_ct_import_scts");
+
+	for (i = 0; i < NUM_EXPECTED_SCTS; i++) {
+		ret = gnutls_x509_ct_sct_get_version(scts, i, &version);
+		if (ret == GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE)
+			break;
+		if (ret < 0)
+			fail("gnutls_x509_ct_sct_get_version");
+		if (version != 1)
+			fail("invalid version");
+		if (gnutls_x509_ct_sct_v1_get(scts, i,
+					      &timestamp,
+					      &logid,
+					      &sigalg, &sig) < 0)
+			fail("gnutls_x509_ct_sct_v1_get");
+		if (logid.size != EXPECTED_LOGID_SIZE)
+			fail("Log ID sizes do not match for SCT %d", i);
+		if (memcmp(logid.data, expected_data[i].logid, EXPECTED_LOGID_SIZE) != 0)
+			fail("Log IDs do not match for SCT %d", i);
+		if (sigalg != expected_data[i].sigalg)
+			fail("Signature algorithms for SCT %d do not match", i);
+		if (sig.size != expected_data[i].sig.size)
+			fail("Signature sizes for SCT %d do not match", i);
+		if (memcmp(sig.data, expected_data[i].sig.data, sig.size) != 0)
+			fail("Signatures for SCT %d do not match", i);
+	}
+
+	if (i != NUM_EXPECTED_SCTS)
+		fail("Less than expected SCTs were seen");
 }
 
 #define MAX_DATA_SIZE 1024
@@ -116,8 +226,7 @@ void doit(void)
 			ret = gnutls_x509_crt_get_extension_data2(cert, i, &ext);
 			if (ret < 0)
 				fail("gnutls_x509_crt_get_extension_data2");
-			if (!check_scts(&ext))
-				break;
+			check_scts(&ext);
 			scts_printed = 1;
 			break;
 		}
